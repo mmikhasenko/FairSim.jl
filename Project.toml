@@ -1,0 +1,20 @@
+name = "FairSim"
+uuid = "edc5eb27-c7d3-45d7-ad16-8b4d0b7d81ad"
+authors = ["Mikhail Mikhasenko <mikhail.mikhasenko@cern.ch>"]
+version = "0.1.0"
+
+[deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+FourVectors = "b122eb78-8380-428a-b8c8-584a022ae8b6"
+LorentzVectorBase = "592a752d-6533-4762-a71b-738712ea30ec"
+Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
+ThreeBodyDecays = "e6563dab-9ca1-5843-bde3-2ccf38d63843"
+
+[compat]
+CSV = "0.10.15"
+DataFrames = "1.7.0"
+FourVectors = "0.3.1"
+LorentzVectorBase = "0.0.1"
+Parameters = "0.12.3"
+ThreeBodyDecays = "0.12.1"
