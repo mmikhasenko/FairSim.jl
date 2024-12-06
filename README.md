@@ -3,9 +3,19 @@
 This repository contains the code to generate events for the FAIR 30 GeV experiment.
 The code is written in Julia and uses `ThreeBodyDecay.jl` for dynamic model of the decay, as well as `FourVectors.jl` for the handling four-vectors.
 
+## Content
+
+- [`notebooks/generator.jl`](notebooks/generator.jl): Pluto notebook to generate events.
+- [`notebooks/XtoppJpsi.jl`](notebooks/XtoppJpsi.jl): Dalitz plot for pp → p p Jψ
+
 ## Running
 
 1. Clone the repository
+
+```
+bash> git clone https://github.com/mmikhasenko/FairSim.git
+```
+
 2. Start julia and 
 
 ```
@@ -13,7 +23,6 @@ bash> julia
 ```
 
 3. install the dependencies
-
 
 ```julia
 ] activate .
