@@ -13,7 +13,7 @@ The code is written in Julia and uses `ThreeBodyDecay.jl` for dynamic model of t
 1. Clone the repository
 
 ```
-bash> git clone https://github.com/mmikhasenko/FairSim.git
+bash> git clone https://github.com/mmikhasenko/FairSim.jl.git
 ```
 
 2. Start julia and 
