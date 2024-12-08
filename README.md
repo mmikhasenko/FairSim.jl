@@ -6,7 +6,7 @@ The code is written in Julia and uses `ThreeBodyDecay.jl` for dynamic model of t
 ## Content
 
 - [`notebooks/generator.jl`](notebooks/generator.jl): Pluto notebook to generate events.
-- [`notebooks/XtoppJpsi.jl`](notebooks/XtoppJpsi.jl): Dalitz plot for pp → p p Jψ
+- [`notebooks/XtoppJpsi.jl`](notebooks/XtoppJpsi.jl): Dalitz plot for pp → p p J/ψ
 
 ## Running
 
@@ -18,15 +18,17 @@ bash> git clone https://github.com/mmikhasenko/FairSim.git
 
 2. Start julia and 
 
-```
+```bash
 bash> julia
 ```
 
 3. install the dependencies
 
 ```julia
-] activate .
-] instantiate
+julia> ]
+pkg> activate .
+pkg> instantiate
+pkg> # backspace
 ```
 
 4. Run the code with Pluto
