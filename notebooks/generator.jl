@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.47
+# v0.20.4
 
 using Markdown
 using InteractiveUtils
@@ -7,24 +7,24 @@ using InteractiveUtils
 # ╔═╡ bc2de5d4-b3d2-11ef-2944-0986d8aaa462
 # ╠═╡ show_logs = false
 begin
-	using Pkg
-	Pkg.activate(mktempdir())
-	Pkg.add([
-		Pkg.PackageSpec("Plots"),
-		Pkg.PackageSpec(url = "https://github.com/JuliaHEP/LorentzVectorBase.jl"),
-		Pkg.PackageSpec(url = "https://github.com/mmikhasenko/FourVectors.jl"),
-		Pkg.PackageSpec("ThreeBodyDecays"),
-		Pkg.PackageSpec("Parameters"),
-		Pkg.PackageSpec("DataFrames"),
-		Pkg.PackageSpec("CSV")
-	])
-
-	using Parameters
+    using Pkg
+    Pkg.activate(joinpath(@__DIR__, ".."))
+    Pkg.instantiate()
+    # 
+    using HadronicLineshapes
+    using ThreeBodyDecays
+    using LinearAlgebra
+    using LaTeXStrings
+    using FourVectors
 	using DataFrames
-	using FourVectors
-	using Plots
-	using ThreeBodyDecays
+    using Parameters
+    using Setfield
+    using QuadGK
+    using PlutoUI
+    using Plots
 	using CSV
+	# 
+	using FairSim
 end
 
 # ╔═╡ 5b12360b-5b5a-4163-b0ec-6018d67de0da
@@ -58,26 +58,18 @@ function reference_four_vectors(σs, ms)
 	FourVector(-p2*sinθ,0,p1-p2*cosθ, E3)
 end
 
-# ╔═╡ 2c092a3d-4020-41fe-8522-a72a1b9f1e7a
-begin
-	const mp = 0.938; # GeV
-	const mψ = 3.09; # GeV
-end
-
-# ╔═╡ b9419922-0dc7-4e48-9591-74d6a5ef8a57
-const E_beam = 30; # GeV
-
-# ╔═╡ e1500a9b-47f7-46cd-9163-9d6e814823d5
-sqrt(2mp^2+2E_beam*mp)
+# ╔═╡ 1d034ecb-afb8-40a3-b902-f25f6d18475d
+const model = FairSim.model_zero
 
 # ╔═╡ a9cd25ec-17d4-4cd3-be2d-ab0cb1ab87dc
-ms = ThreeBodyMasses(mp, mψ, mp; m0 = sqrt(2mp^2+2E_beam*mp))
+const ms = masses(model)
 
 # ╔═╡ 6c4c35fe-77c9-4719-8bfd-da7580061e65
-function propagate_to_lab(pv_0, euler_angles, γ_lab = E_beam/ms.m0)
+function propagate_to_lab(p, euler_angles, γ_lab = FairSim.E_max/ms.m0)
 	@unpack α,β,γ = euler_angles
-	pv_rf = pv_0 .|> Rz(γ) .|> Ry(β) .|> Rz(α) 
-	pv_rf .|> Bz(γ_lab)
+	p_rotated = p |> Rz(γ) |> Ry(β) |> Rz(α) 
+	p_lab = p_rotated |> Bz(γ_lab)
+	return p_lab
 end
 
 # ╔═╡ c58ddd76-08cc-40c6-8c8b-c4f025b87bf9
@@ -91,11 +83,11 @@ md"""
 # ╔═╡ dcc69136-2ff2-46d8-ab96-c2888f0610d0
 four_vectors_test = let
 	pv_0 = reference_four_vectors(σs_test, ms)	
-	propagate_to_lab(pv_0, (; α=0.1, β=0.2, γ=0.3))
+	propagate_to_lab.(pv_0, (; α=0.1, β=0.2, γ=0.3) |> Ref)
 end;
 
 # ╔═╡ 97074042-4620-43e1-af12-0b7d189226c2
-@assert sum(four_vectors_test)[4] ≈ E_beam
+@assert sum(four_vectors_test)[4] ≈ FairSim.E_max
 
 # ╔═╡ 8b611485-2b76-4238-a689-48e2689181cd
 @assert all(
@@ -110,8 +102,8 @@ md"""
 """
 
 # ╔═╡ 75d147ba-da11-4c0f-9736-03cd3d86c45c
-function kinematic_mapping(y)
-	_σs = x2σs(y[1:2], ms; k=1)
+function kinematic_mapping(y; k)
+	_σs = x2σs(y[1:2], ms; k)
 	pv_0 = reference_four_vectors(_σs, ms)	
 	# 
 	euler_angles = (; 
@@ -120,31 +112,79 @@ function kinematic_mapping(y)
 		γ=π*(2y[5]-1)
 		)
 	#
-	propagate_to_lab(pv_0, euler_angles)
+	propagate_to_lab.(pv_0, Ref(euler_angles))
 end
-
-# ╔═╡ 799bacec-5fad-4e21-876a-645a401c285f
-kinematic_mapping(rand(5))
 
 # ╔═╡ b374abc9-1934-43a8-a113-3b8443ae67b5
 to_vector(p) = (@unpack px,py,pz,E = p; [px,py,pz,E])
 
-# ╔═╡ 8a3240a7-453e-489e-8eab-6194de710c52
-begin # write to disc
-	data = map(1:10) do _
-		pv = kinematic_mapping(rand(5))
+# ╔═╡ 5acf4dfc-85d2-450a-9c0d-03fa73bec705
+const nMC = 100_000;
+
+# ╔═╡ e26db898-6dcc-411b-a66c-d98a6ec62150
+const k_preference = 3
+
+# ╔═╡ cfad287a-7303-43e0-ba05-d96407e6580b
+data_x = let
+	sample0 = rand(nMC,5);
+	mapslices(sample0; dims=2) do y
+		pv = kinematic_mapping(y; k=k_preference)
 		NamedTuple{(:p1_xyzE,:p2_xyzE,:p3_xyzE)}(pv)
-	end |> DataFrame
-	CSV.write(joinpath(@__DIR__, "..", "data", "momenta.csv"), data)
-end;
+	end[:,1]
+end |> DataFrame;
+
+# ╔═╡ 8b532d54-394b-496e-9838-79cca12e65af
+data_y = transform(data_x, [:p1_xyzE, :p2_xyzE, :p3_xyzE] => ByRow() do p1, p2, p3
+	σ3 = mass2(p1+p2)
+	σ1 = mass2(p2+p3)
+	σs = Invariants(ms; σ1, σ3)
+	a = amplitude(model, σs)
+	# 
+	k = k_preference
+	σk = σs[k]
+	weight_phsp = breakup_ij(σk, ms; k)*breakup_Rk(σk, ms; k) / sqrt(σk)*ms.m0;
+	weight = abs2(a) * weight_phsp
+	# 
+	(; weight, σs)
+end => AsTable);
+
+# ╔═╡ 1297b8ea-41f8-4e3c-836d-276fe6ace8ef
+md"""
+### Importance Sampling
+"""
+
+# ╔═╡ 5cfd9476-ed34-4f54-ba2f-2ed3f9b49a39
+function importance_sampling(weights)
+	max_w = maximum(weights)
+	n = length(weights)
+	if_to_take = weights .> rand(n) .* max_w
+	return if_to_take
+end
+
+# ╔═╡ e6e92ca6-d368-48ec-abae-2bb32644daec
+data_sampled = data_y[importance_sampling(data_y.weight), :];
+
+# ╔═╡ 391df748-973c-4174-85aa-8bf557d785e6
+let bins=100
+	plot(size=(700,300), grid=(1,2),
+		histogram2d(getindex.(data_y.σs, 1), getindex.(data_y.σs, 3); bins),
+		histogram2d(getindex.(data_sampled.σs, 1), getindex.(data_sampled.σs, 3); bins))
+end
+
+# ╔═╡ f6927ce9-6c1e-413d-bece-78c813d801c5
+CSV.write(joinpath(@__DIR__, "..", "data", "momenta.csv"), 
+	select(data_sampled, [:p1_xyzE, :p2_xyzE, :p3_xyzE]))
+
+# ╔═╡ 8a3240a7-453e-489e-8eab-6194de710c52
+md"""
+### sample size: $(size(data_sampled, 1))
+"""
 
 # ╔═╡ Cell order:
 # ╟─5b12360b-5b5a-4163-b0ec-6018d67de0da
 # ╠═bc2de5d4-b3d2-11ef-2944-0986d8aaa462
 # ╠═089ef92b-4c64-44ef-9d44-77f8ae0aba14
-# ╠═2c092a3d-4020-41fe-8522-a72a1b9f1e7a
-# ╠═b9419922-0dc7-4e48-9591-74d6a5ef8a57
-# ╠═e1500a9b-47f7-46cd-9163-9d6e814823d5
+# ╠═1d034ecb-afb8-40a3-b902-f25f6d18475d
 # ╠═a9cd25ec-17d4-4cd3-be2d-ab0cb1ab87dc
 # ╠═6c4c35fe-77c9-4719-8bfd-da7580061e65
 # ╟─c58ddd76-08cc-40c6-8c8b-c4f025b87bf9
@@ -154,6 +194,14 @@ end;
 # ╠═8b611485-2b76-4238-a689-48e2689181cd
 # ╟─99801d70-a388-4df2-a2b8-e5510200bc00
 # ╠═75d147ba-da11-4c0f-9736-03cd3d86c45c
-# ╠═799bacec-5fad-4e21-876a-645a401c285f
 # ╠═b374abc9-1934-43a8-a113-3b8443ae67b5
-# ╠═8a3240a7-453e-489e-8eab-6194de710c52
+# ╠═5acf4dfc-85d2-450a-9c0d-03fa73bec705
+# ╠═e26db898-6dcc-411b-a66c-d98a6ec62150
+# ╠═cfad287a-7303-43e0-ba05-d96407e6580b
+# ╠═8b532d54-394b-496e-9838-79cca12e65af
+# ╟─1297b8ea-41f8-4e3c-836d-276fe6ace8ef
+# ╠═5cfd9476-ed34-4f54-ba2f-2ed3f9b49a39
+# ╠═e6e92ca6-d368-48ec-abae-2bb32644daec
+# ╠═391df748-973c-4174-85aa-8bf557d785e6
+# ╠═f6927ce9-6c1e-413d-bece-78c813d801c5
+# ╟─8a3240a7-453e-489e-8eab-6194de710c52
