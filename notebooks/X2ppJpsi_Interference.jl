@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.47
+# v0.20.4
 
 using Markdown
 using InteractiveUtils
@@ -8,9 +8,8 @@ using InteractiveUtils
 # ╠═╡ show_logs = false
 begin
 	using Pkg
-	Pkg.activate(mktempdir())
-	Pkg.add(["ThreeBodyDecays", "HadronicLineshapes",
-		"Plots", "DataFrames", "Setfield"])
+	Pkg.activate(joinpath(@__DIR__, ".."))
+	Pkg.instantiate()
 	# 
 	using ThreeBodyDecays
 	using HadronicLineshapes
@@ -19,6 +18,13 @@ begin
 	using DataFrames
 	using Setfield
 end
+
+# ╔═╡ a524432e-c719-4b03-94db-09e38320c73c
+md"""
+# $X \to pp J/\psi$ matrix element
+
+using cascade decay parametrization
+"""
 
 # ╔═╡ b89d83b7-463e-416b-89f8-0b21a6c16b89
 md"""
@@ -173,6 +179,7 @@ let
 end
 
 # ╔═╡ Cell order:
+# ╟─a524432e-c719-4b03-94db-09e38320c73c
 # ╠═2329ec14-b2eb-11ef-2df7-ad53942f462f
 # ╟─b89d83b7-463e-416b-89f8-0b21a6c16b89
 # ╠═a0a1d866-59b4-4bdd-a8b8-ec58d231f26a
