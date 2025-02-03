@@ -70,6 +70,7 @@ runtests
 safetestset
 seriestype
 setdocmeta
+Setfield
 sincos
 splitext
 stepbins
