@@ -29,11 +29,15 @@ end
 
 # ╔═╡ 5b12360b-5b5a-4163-b0ec-6018d67de0da
 md"""
-# Four-vectors from rest fram to lab frame
+# Importance sampling
 
 In this notebook a four-vectors are created from set of Mandelstam invariant variables. The vectors are boosted to the lab frame using **fixed target** setup with $30\,$GeV proton beam on a proton target.
 
+We use the `FairSim.model_zero` to weight the events. It generates a matrix element for $J/\psi$ production
+
 $p p \to p p J/\psi$
+
+using a simple BW model.
 """
 
 # ╔═╡ 089ef92b-4c64-44ef-9d44-77f8ae0aba14
