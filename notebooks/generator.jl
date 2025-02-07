@@ -11,7 +11,7 @@ begin
     Pkg.activate(joinpath(@__DIR__, ".."))
     Pkg.instantiate()
     # 
-    using HadronicLineshapes
+    using HadronicLineshapes: BreitWigner
     using ThreeBodyDecays
     using LinearAlgebra
     using LaTeXStrings
@@ -76,6 +76,26 @@ function propagate_to_lab(p, euler_angles, γ_lab = FairSim.E_max/ms.m0)
 	return p_lab
 end
 
+# ╔═╡ c0c594bf-f92d-4d1e-b708-37c48a24d68b
+function decay_a_particle(p; decay_angles::NamedTuple{(:cosθ, :ϕ)}, m1, m2)
+	# parameters of the mother moving frame
+	γ = boost_gamma(p)
+	m = mass(p)
+	@unpack cosθ, ϕ = spherical_coordinates(p)
+
+	# get vectors in rest frame
+	k = breakup(m,m1,m2)
+	sinθ_decay = sqrt(1-decay_angles.cosθ^2)
+	k_vec = (
+		k * sinθ_decay * cos(decay_angles.ϕ),
+		k * sinθ_decay * sin(decay_angles.ϕ), k * decay_angles.cosθ)
+	# 
+	# get four-vectors in lab frame
+	p1 = FourVector(k_vec...; M = m1)
+	p2 = FourVector((0 .- k_vec)...; M = m2)
+	(p1, p2) .|> Bz(γ) .|> Ry(acos(cosθ)) .|> Rz(ϕ)
+end
+
 # ╔═╡ c58ddd76-08cc-40c6-8c8b-c4f025b87bf9
 md"""
 ## Tests of implementation
@@ -89,6 +109,13 @@ four_vectors_test = let
 	pv_0 = reference_four_vectors(σs_test, ms)	
 	propagate_to_lab.(pv_0, (; α=0.1, β=0.2, γ=0.3) |> Ref)
 end;
+
+# ╔═╡ 0f4d1022-c1e3-424f-8df8-e59bb7a01477
+let # test
+	p = four_vectors_test[1]
+	p1, p2 = decay_a_particle(p; decay_angles=(cosθ=0.6, ϕ=0.2), m1=0.2, m2=0.2)
+	@assert p ≈ (p1 + p2)
+end
 
 # ╔═╡ 97074042-4620-43e1-af12-0b7d189226c2
 @assert sum(four_vectors_test)[4] ≈ FairSim.E_max
@@ -175,9 +202,16 @@ let bins=100
 		histogram2d(getindex.(data_sampled.σs, 1), getindex.(data_sampled.σs, 3); bins))
 end
 
+# ╔═╡ bf0eed65-4848-4315-a1c4-73210f2b3cf5
+data_with_muons_sampled = transform(data_sampled, :p2_xyzE => ByRow() do p
+	pmup_xyzE, pmum_xyzE = decay_a_particle(p;
+		decay_angles=(cosθ=0.6, ϕ=0.2), m1=FairSim.mμ, m2=FairSim.mμ)
+	(; pmup_xyzE, pmum_xyzE)
+end => AsTable);
+
 # ╔═╡ f6927ce9-6c1e-413d-bece-78c813d801c5
 CSV.write(joinpath(@__DIR__, "..", "data", "momenta.csv"), 
-	select(data_sampled, [:p1_xyzE, :p2_xyzE, :p3_xyzE]))
+	select(data_with_muons_sampled, [:p1_xyzE, :pmup_xyzE, :pmum_xyzE, :p3_xyzE]))
 
 # ╔═╡ 8a3240a7-453e-489e-8eab-6194de710c52
 md"""
@@ -191,6 +225,8 @@ md"""
 # ╠═1d034ecb-afb8-40a3-b902-f25f6d18475d
 # ╠═a9cd25ec-17d4-4cd3-be2d-ab0cb1ab87dc
 # ╠═6c4c35fe-77c9-4719-8bfd-da7580061e65
+# ╠═c0c594bf-f92d-4d1e-b708-37c48a24d68b
+# ╠═0f4d1022-c1e3-424f-8df8-e59bb7a01477
 # ╟─c58ddd76-08cc-40c6-8c8b-c4f025b87bf9
 # ╠═7941cb28-d2c9-4a4c-9db1-565c755fbc91
 # ╠═dcc69136-2ff2-46d8-ab96-c2888f0610d0
@@ -207,5 +243,6 @@ md"""
 # ╠═5cfd9476-ed34-4f54-ba2f-2ed3f9b49a39
 # ╠═e6e92ca6-d368-48ec-abae-2bb32644daec
 # ╠═391df748-973c-4174-85aa-8bf557d785e6
+# ╠═bf0eed65-4848-4315-a1c4-73210f2b3cf5
 # ╠═f6927ce9-6c1e-413d-bece-78c813d801c5
 # ╟─8a3240a7-453e-489e-8eab-6194de710c52
