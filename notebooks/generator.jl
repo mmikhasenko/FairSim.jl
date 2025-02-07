@@ -19,12 +19,15 @@ begin
 	using DataFrames
     using Parameters
     using Setfield
+    using Random
     using QuadGK
     using PlutoUI
     using Plots
 	using CSV
 	# 
 	using FairSim
+	# 
+	Random.seed!(1323)
 end
 
 # ╔═╡ 5b12360b-5b5a-4163-b0ec-6018d67de0da
@@ -204,8 +207,9 @@ end
 
 # ╔═╡ bf0eed65-4848-4315-a1c4-73210f2b3cf5
 data_with_muons_sampled = transform(data_sampled, :p2_xyzE => ByRow() do p
+	decay_angles = NamedTuple{(:cosθ, :ϕ)}((rand(2) .- 0.5) .* [2, 2π])
 	pmup_xyzE, pmum_xyzE = decay_a_particle(p;
-		decay_angles=(cosθ=0.6, ϕ=0.2), m1=FairSim.mμ, m2=FairSim.mμ)
+		decay_angles, m1=FairSim.mμ, m2=FairSim.mμ)
 	(; pmup_xyzE, pmum_xyzE)
 end => AsTable);
 
