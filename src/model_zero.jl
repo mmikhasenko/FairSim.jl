@@ -1,5 +1,5 @@
 const E_max = 30.0 # GeV
-const m0_max = sqrt(mp^2 + 2mp * E_max)
+const m0_max = sqrt(2mp^2 + 2mp * E_max)
 
 const model_zero = (;
     m0 = m0_max,

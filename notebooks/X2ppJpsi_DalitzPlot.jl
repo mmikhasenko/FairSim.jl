@@ -63,9 +63,6 @@ const model = (;
     scattlen_pp = 1.5,
     c_pp = 3.2 * cis(π / 3))
 
-# ╔═╡ a311292a-49d2-402c-92e7-7305d767ec30
-model
-
 # ╔═╡ 187f11a6-a8e5-4f09-8733-9d4799decf0f
 ms = masses(model)
 
@@ -121,6 +118,20 @@ md"""
 ## Fit fractions
 """
 
+# ╔═╡ 68a4140d-1288-4a59-ae93-5bbec9757a9e
+const model29 = let
+	E_max = 29.0
+	mp = FairSim.mp
+	model_zero = FairSim.model_zero
+	@set model_zero.m0 = sqrt(2mp^2 + 2mp * E_max)
+end;
+
+# ╔═╡ 0b553929-7661-427d-a3d9-84268e509e48
+const model29_Pc = @set model29.c_pp = 0.0im;
+
+# ╔═╡ 3dc2d704-cc12-45cb-9007-5ddba15d4bfd
+const model29_pp = @set model29.couplings_Pc = (0.0, 0.0, 0.0);
+
 # ╔═╡ 1f0511f1-6e78-4630-88c6-ed3e90449490
 function numerical_integral(model, phsp)
 	_i = map(σs->abs2(amplitude(model, σs)), phsp)
@@ -130,7 +141,7 @@ end
 # ╔═╡ 2ee4b4c3-6471-4856-98b9-7c29c5d141de
 integral_computations = let
 	nDraft = 100_000
-	ms = masses(model)
+	ms = masses(model29)
 	_data = mapslices(rand(nDraft,2); dims=2) do y
 		y2σs(y, ms; k=1)
 	end[:,1];
@@ -138,12 +149,12 @@ integral_computations = let
 		isphysical(σs, ms)
 	end
 	σs0 = randomPoint(ms)
-	I_all = numerical_integral(model, _data)
-	I_pp = numerical_integral(model_pp, _data)
+	I_all = numerical_integral(model29, _data)
+	I_pp = numerical_integral(model29_pp, _data)
 	I_Pcc = map(1:3) do i
-		c = model.couplings_Pc
-		model_pure = @set model_Pc.couplings_Pc = ntuple(x->0.0, length(c))
-		_model = @set model_pure.couplings_Pc[i] = c[i]
+		c = model29.couplings_Pc
+		_model_pure = @set model29_Pc.couplings_Pc = ntuple(x->0.0, length(c))
+		_model = @set _model_pure.couplings_Pc[i] = c[i]
 		numerical_integral(_model, _data)
 	end
 	# 
@@ -163,14 +174,16 @@ fit_fractions = (
 # ╠═dcdd4853-b8fa-4b8e-9547-508bda760339
 # ╠═516dc354-0d3e-43f8-a613-bfe9226dacee
 # ╠═45789d1f-fdb4-41c5-b352-95f031355f5e
-# ╠═a311292a-49d2-402c-92e7-7305d767ec30
 # ╠═187f11a6-a8e5-4f09-8733-9d4799decf0f
 # ╠═523445d2-a59e-41db-877c-15796494faff
 # ╠═2020b904-59c1-4f4d-98a7-f0c8611ce348
 # ╠═25699e31-5214-4fd7-b463-601ebdfe5ffe
 # ╠═d1692d47-67d5-4ec2-806a-c19fe14bb52d
-# ╠═fe5a7dc6-e5b2-4a2d-90c3-4256aeb7aa2b
 # ╟─1246dd11-8168-4c04-97f9-eb6495edbd76
+# ╠═68a4140d-1288-4a59-ae93-5bbec9757a9e
+# ╠═0b553929-7661-427d-a3d9-84268e509e48
+# ╠═3dc2d704-cc12-45cb-9007-5ddba15d4bfd
 # ╠═1f0511f1-6e78-4630-88c6-ed3e90449490
 # ╠═2ee4b4c3-6471-4856-98b9-7c29c5d141de
 # ╟─ab049f0d-d483-44f2-bb59-d4c3c63c35c5
+# ╠═fe5a7dc6-e5b2-4a2d-90c3-4256aeb7aa2b
