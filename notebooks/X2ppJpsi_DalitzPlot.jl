@@ -17,6 +17,7 @@ macro bind(def, element)
 end
 
 # ╔═╡ 0f61210a-a1db-11ef-2af3-e76254c194e4
+# ╠═╡ show_logs = false
 begin
     using Pkg
     Pkg.activate(joinpath(@__DIR__, ".."))
@@ -26,8 +27,10 @@ begin
     using ThreeBodyDecays
     using LinearAlgebra
     using LaTeXStrings
+    using Measurements
     using DataFrames
     using Parameters
+    using Statistics
     using Setfield
     using QuadGK
     using PlutoUI
@@ -59,6 +62,9 @@ const model = (;
     couplings_Pc = (0.1, 0.35, 0.08),
     scattlen_pp = 1.5,
     c_pp = 3.2 * cis(π / 3))
+
+# ╔═╡ a311292a-49d2-402c-92e7-7305d767ec30
+model
 
 # ╔═╡ 187f11a6-a8e5-4f09-8733-9d4799decf0f
 ms = masses(model)
@@ -110,6 +116,46 @@ begin
 	plot!()
 end
 
+# ╔═╡ 1246dd11-8168-4c04-97f9-eb6495edbd76
+md"""
+## Fit fractions
+"""
+
+# ╔═╡ 1f0511f1-6e78-4630-88c6-ed3e90449490
+function numerical_integral(model, phsp)
+	_i = map(σs->abs2(amplitude(model, σs)), phsp)
+	mean(_i) ± std(_i) / sqrt(length(_i))
+end
+
+# ╔═╡ 2ee4b4c3-6471-4856-98b9-7c29c5d141de
+integral_computations = let
+	nDraft = 100_000
+	ms = masses(model)
+	_data = mapslices(rand(nDraft,2); dims=2) do y
+		y2σs(y, ms; k=1)
+	end[:,1];
+	filter!(_data) do σs
+		isphysical(σs, ms)
+	end
+	σs0 = randomPoint(ms)
+	I_all = numerical_integral(model, _data)
+	I_pp = numerical_integral(model_pp, _data)
+	I_Pcc = map(1:3) do i
+		c = model.couplings_Pc
+		model_pure = @set model_Pc.couplings_Pc = ntuple(x->0.0, length(c))
+		_model = @set model_pure.couplings_Pc[i] = c[i]
+		numerical_integral(_model, _data)
+	end
+	# 
+	(; I_all, I_pp, I_Pcc)
+end
+
+# ╔═╡ ab049f0d-d483-44f2-bb59-d4c3c63c35c5
+fit_fractions = (
+	:pp => integral_computations.I_pp / integral_computations.I_all .* 100,
+	([:Pcc4312, :Pcc4440, :Pcc4457] .=> (integral_computations.I_Pcc ./ integral_computations.I_all .* 100))...
+)
+
 # ╔═╡ Cell order:
 # ╠═0f61210a-a1db-11ef-2af3-e76254c194e4
 # ╠═783954c5-0123-4c2b-a28d-1aeb7eb19218
@@ -117,9 +163,14 @@ end
 # ╠═dcdd4853-b8fa-4b8e-9547-508bda760339
 # ╠═516dc354-0d3e-43f8-a613-bfe9226dacee
 # ╠═45789d1f-fdb4-41c5-b352-95f031355f5e
+# ╠═a311292a-49d2-402c-92e7-7305d767ec30
 # ╠═187f11a6-a8e5-4f09-8733-9d4799decf0f
 # ╠═523445d2-a59e-41db-877c-15796494faff
 # ╠═2020b904-59c1-4f4d-98a7-f0c8611ce348
 # ╠═25699e31-5214-4fd7-b463-601ebdfe5ffe
 # ╠═d1692d47-67d5-4ec2-806a-c19fe14bb52d
 # ╠═fe5a7dc6-e5b2-4a2d-90c3-4256aeb7aa2b
+# ╟─1246dd11-8168-4c04-97f9-eb6495edbd76
+# ╠═1f0511f1-6e78-4630-88c6-ed3e90449490
+# ╠═2ee4b4c3-6471-4856-98b9-7c29c5d141de
+# ╟─ab049f0d-d483-44f2-bb59-d4c3c63c35c5
