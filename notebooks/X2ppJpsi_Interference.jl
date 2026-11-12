@@ -100,8 +100,9 @@ function interference_matrix(model, σs; objective=unpolarized_intensity)
 	n = length(model)
 	I_matrix = Matrix{Bool}(I, (n,n))
 	intensity_m = map(Iterators.product(1:n,1:n)) do (i,j)
-		_model = @set model.couplings = 
-			Tuple(model.couplings .* (I_matrix[i,:] .|| I_matrix[j,:]))
+		couplings = Tuple(model.couplings .* (I_matrix[i,:] .|| I_matrix[j,:]))
+		_model = ThreeBodyDecay(model.chains, couplings, model.names;
+			reference_k = ThreeBodyDecays.reference_k(model))
 		objective(_model, σs)
 	end
 	# leave interference: (a+b)^2-a^2-b^2
