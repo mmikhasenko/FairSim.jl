@@ -48,3 +48,7 @@ If you want to contribute to this project, please open an issue or a pull reques
 ## License
 
 This code is released under the MIT License.
+
+## ThreeBodyDecays 0.16
+
+Uses ThreeBodyDecays 0.16. The interference notebook wraps recouplings in `Vertex` and constructs its model with `reference_k = 3`, the common topology of all its chains. It compares spin-summed intensities with illustrative random couplings; this is not a conversion prescription for fitted helicity couplings. The scalar production model uses the unchanged kinematics API.
