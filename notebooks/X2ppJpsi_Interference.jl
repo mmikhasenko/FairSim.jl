@@ -72,8 +72,8 @@ df_with_dc = transform(df, [:two_l, :two_s, :two_j] => ByRow() do two_l, two_s, 
 		k=3,
 		two_j,
 		Xlineshape=identity,
-		Hij=RecouplingLS((two_l, two_s)), # ψ → p pbar
-		HRk=RecouplingLS((two_j, two_j))  # B → ψ K
+		Hij=Vertex(RecouplingLS((two_l, two_s))), # ψ → p pbar
+		HRk=Vertex(RecouplingLS((two_j, two_j)))  # B → ψ K
 	)
 	wave = ['S', 'P'][div(two_l,2)+1]
 	name = "$(wave)-wave($(div(two_s,2))→$(div(two_j,2)))"
@@ -82,7 +82,7 @@ end => AsTable);
 
 # ╔═╡ 3aa1e074-b0bc-411f-9a56-37c69c887063
 model = ThreeBodyDecay(
-	df_with_dc.name .=> zip(df_with_dc.c, df_with_dc.decay_chain));
+	df_with_dc.name .=> zip(df_with_dc.c, df_with_dc.decay_chain); reference_k = 3);
 
 # ╔═╡ 7a274027-a8f5-4aed-9d2e-6a53c808fa68
 md"""
@@ -100,9 +100,9 @@ function interference_matrix(model, σs; objective=unpolarized_intensity)
 	n = length(model)
 	I_matrix = Matrix{Bool}(I, (n,n))
 	intensity_m = map(Iterators.product(1:n,1:n)) do (i,j)
-		_model = @set model.couplings = 
-			ThreeBodyDecays.SVector(
-				model.couplings .* (I_matrix[i,:] .|| I_matrix[j,:]))
+		couplings = Tuple(model.couplings .* (I_matrix[i,:] .|| I_matrix[j,:]))
+		_model = ThreeBodyDecay(model.chains, couplings, model.names;
+			reference_k = ThreeBodyDecays.reference_k(model))
 		objective(_model, σs)
 	end
 	# leave interference: (a+b)^2-a^2-b^2

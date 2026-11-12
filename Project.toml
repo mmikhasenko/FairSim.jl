@@ -31,4 +31,10 @@ Parameters = "0.12.3"
 Plots = "1.40.9"
 QuadGK = "2.11.1"
 Setfield = "1.1.1"
-ThreeBodyDecays = "0.12.1"
+ThreeBodyDecays = "0.16"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
